@@ -14,6 +14,7 @@
   --border: #e5e7eb;
   --dark: #111827;
   --white: #fff;
+  --field-radius: 16px;
 }
 
 /* ── RESET ──────────────────────────────────────── */
@@ -33,6 +34,8 @@ body {
   min-height: 100vh;
   font-size: 14px;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 a {
@@ -140,6 +143,16 @@ a {
   padding-bottom: 80px;
   width: 100%;
   overflow-x: hidden;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Akun Pegawai list: footer CTA is sticky and provides its own bottom
+   spacing, so the generic trailing padding would just leave a blank gap
+   below the button (see feedback: footer should stay pinned, no scroll gap). */
+.content--pegawai {
+  padding-bottom: 0;
 }
 
 /* ── CARDS ──────────────────────────────────────── */
@@ -177,7 +190,7 @@ a {
 
 .ubah-btn {
   border: 1.5px solid var(--border);
-  border-radius: 20px;
+  border-radius: 999px;
   padding: 5px 16px;
   font-size: 12px;
   font-weight: 600;
@@ -278,14 +291,16 @@ a {
 .klaim-box {
   flex: 1;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: none;
+  outline: none;
+  box-shadow: none;
   border-radius: 12px;
   padding: 10px 12px 12px;
   cursor: pointer;
 }
 
 .klaim-label {
-  font-size: 10px;
+  font-size: 13px;
   color: #a4a4a4;
   display: flex;
   align-items: center;
@@ -309,10 +324,11 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 7px;
+  font-size: 8px;
+  font-weight: 700;
   color: #a4a4a4;
-  font-style: italic;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .divider {
@@ -402,7 +418,7 @@ canvas#lineChart {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: #f5f5f5;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -477,9 +493,15 @@ canvas#lineChart {
   border-bottom: 1px solid #e5e7eb;
 }
 
+.jam-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
 .jam-title {
   font-size: 14px;
-  margin-bottom: 14px;
 }
 .jam-title b {
   font-weight: 800;
@@ -820,7 +842,7 @@ canvas#lineChart {
   align-items: center;
   gap: 6px;
   border: 1.5px solid var(--border);
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 7px 12px;
   font-size: 13px;
   font-weight: 600;
@@ -832,6 +854,7 @@ canvas#lineChart {
 
 .pegawai-list {
   background: white;
+  flex: 1 1 auto;
 }
 
 .pegawai-item {
@@ -885,6 +908,10 @@ canvas#lineChart {
 .pegawai-foot {
   padding: 16px;
   background: #f5f5f7;
+  position: sticky;
+  bottom: 0;
+  z-index: 60;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
 }
 
 /* ── FORM / ADD USER ────────────────────────────── */
@@ -894,10 +921,12 @@ canvas#lineChart {
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 60px;
-  z-index: 10;
+}
+
+/* .header already renders the bottom border for the simple topbar variant,
+   so avoid stacking a second border under .form-header (item 46). */
+.header > .form-header {
+  border-bottom: none;
 }
 
 .form-header-title {
@@ -910,6 +939,7 @@ canvas#lineChart {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  background: white;
 }
 
 .form-group {
@@ -920,14 +950,14 @@ canvas#lineChart {
 
 .form-label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--dark);
 }
 
 .form-input {
   width: 100%;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--field-radius);
   background: var(--gray-bg);
   padding: 13px 14px;
   font-size: 14px;
@@ -955,7 +985,7 @@ canvas#lineChart {
 .form-select-wrap select {
   width: 100%;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--field-radius);
   background: var(--gray-bg);
   padding: 13px 38px 13px 14px;
   font-size: 14px;
@@ -970,6 +1000,39 @@ canvas#lineChart {
   position: absolute;
   right: 12px;
   pointer-events: none;
+}
+
+.form-fakeselect {
+  width: 100%;
+  border: none;
+  border-radius: var(--field-radius);
+  background: var(--gray-bg);
+  padding: 13px 14px;
+  font-size: 14px;
+  color: var(--dark);
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  transition: background 0.15s;
+}
+.form-fakeselect span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.form-fakeselect .placeholder {
+  color: var(--gray2);
+}
+.form-fakeselect svg {
+  flex-shrink: 0;
+}
+.form-fakeselect.is-invalid {
+  background: #fee2e2;
 }
 
 .form-foot {
@@ -1003,7 +1066,7 @@ canvas#lineChart {
   background: var(--red);
   color: white;
   border: none;
-  border-radius: 12px;
+  border-radius: 999px;
   padding: 15px;
   font-size: 15px;
   font-weight: 700;

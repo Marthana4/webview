@@ -31,6 +31,10 @@ function hideTip() {
   if (tipEl) tipEl.style.opacity = '0';
 }
 
+// Safety net: kalau ada tooltip yang somehow masih nyangkut (mis. gesture
+// tak terduga), pastikan hilang begitu user scroll halaman.
+window.addEventListener('scroll', hideTip, { passive: true });
+
 // ─── TOAST ───────────────────────────────────────
 function toast(msg, isError = false) {
   const el = document.getElementById('toast');

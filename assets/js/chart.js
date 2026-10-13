@@ -112,6 +112,8 @@ function drawLineChart(vals, lbls) {
     e.preventDefault();
     canvas.onmousemove(e.touches[0]);
   };
+  canvas.ontouchend    = hideTip;
+  canvas.ontouchcancel = hideTip;
 }
 
 // ─── BAR CHART ────────────────────────────────────
