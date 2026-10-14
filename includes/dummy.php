@@ -2,15 +2,22 @@
 
 require_once __DIR__ . '/auth.php';
 
-$WEBVIEW_AUTH = webviewRequireAuth(
-    strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest'
-);
-$WEBVIEW_AUTH_EMAIL = (string)($WEBVIEW_AUTH['email'] ?? '');
-
+// Preview lokal: auth dilewati hanya jika file penanda includes/.skip_auth ada.
+// File itu di-.gitignore, jadi tidak pernah ikut ter-deploy.
+$WEBVIEW_SKIP_AUTH = is_file(__DIR__ . '/.skip_auth');
 $WEBVIEW_EXPECTS_JSON = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
-$WEBVIEW_ACCOUNT_STATUS = webviewGetMerchantAccountStatus($WEBVIEW_AUTH_EMAIL);
-if (!$WEBVIEW_ACCOUNT_STATUS['active']) {
-    webviewDenyInactiveAccount($WEBVIEW_EXPECTS_JSON, $WEBVIEW_ACCOUNT_STATUS['exists']);
+
+if ($WEBVIEW_SKIP_AUTH) {
+    $WEBVIEW_AUTH = ['status' => true, 'email' => '', 'token' => '', 'token_encoded' => '', 'source' => 'skip_auth'];
+    $WEBVIEW_AUTH_EMAIL = '';
+} else {
+    $WEBVIEW_AUTH = webviewRequireAuth($WEBVIEW_EXPECTS_JSON);
+    $WEBVIEW_AUTH_EMAIL = (string)($WEBVIEW_AUTH['email'] ?? '');
+
+    $WEBVIEW_ACCOUNT_STATUS = webviewGetMerchantAccountStatus($WEBVIEW_AUTH_EMAIL);
+    if (!$WEBVIEW_ACCOUNT_STATUS['active']) {
+        webviewDenyInactiveAccount($WEBVIEW_EXPECTS_JSON, $WEBVIEW_ACCOUNT_STATUS['exists']);
+    }
 }
 
 $defaultToko = [
@@ -643,9 +650,14 @@ function buildReportPayload(array $merchantLocations, array $fallback, ?int $tok
     $pctAvg = calcPercentChange($avgCurrent, $avgPrevious);
     $pctSaldo = calcPercentChange($currentSummary['total_nilai'] ?? 0, $previousSummary['total_nilai'] ?? 0);
 
+    $tx = !empty($txToday) ? $txToday : ($fallback['transaksi_hari_ini'] ?? ['total_nilai' => 0, 'jumlah_transaksi' => 0]);
+    // TODO: saldo QRIS belum ter-settle belum punya sumber data. Untuk merchant
+    // asli dikirim null (baris disembunyikan); angka dummy hanya saat tanpa lokasi.
+    $tx['saldo_qris'] = empty($merchantLocations) ? ($fallback['saldo_qris'] ?? null) : null;
+
     return [
         'toko' => $selectedToko,
-        'tx' => !empty($txToday) ? $txToday : ($fallback['transaksi_hari_ini'] ?? ['total_nilai' => 0, 'jumlah_transaksi' => 0]),
+        'tx' => $tx,
         'lap' => [
             'periode_str' => $range['periode_str'],
             'total_tx' => $currentSummary['jumlah_transaksi'] ?? ($fallback['laporan']['total_tx'] ?? 0),
@@ -691,6 +703,7 @@ $DUMMY = [
         'total_nilai' => 250000,
         'jumlah_transaksi' => 12,
     ],
+    'saldo_qris' => 520000,
     'laporan' => [
         'periode_str' => '15 Jan 2024 - 15 Jan 2024',
         'total_tx' => 500,

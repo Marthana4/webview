@@ -69,6 +69,7 @@ $base_url = "http://localhost/webview";
       <div class="tabs">
         <a href="report.php" class="tab <?= ($activeTab ?? '') === 'laporan' ? 'active' : '' ?>">Laporan</a>
         <a href="list.php" class="tab <?= ($activeTab ?? '') === 'pegawai' ? 'active' : '' ?>">Akun Pegawai</a>
+        <a href="referal.php" class="tab <?= ($activeTab ?? '') === 'referal' ? 'active' : '' ?>">Referal</a>
       </div>
     </div>
   <?php endif; ?>

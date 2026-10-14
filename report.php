@@ -35,9 +35,19 @@ require_once __DIR__ . '/includes/header.php';
   </div>
 
   <div class="tx-card fi">
-    <div class="tx-label">Nilai transaksi hari ini</div>
-    <div class="tx-val" id="txValue"><?= fmtRp($tx['total_nilai']) ?></div>
-    <div class="tx-count" id="txCount">= <?= $tx['jumlah_transaksi'] ?> transaksi</div>
+    <div class="tx-info">
+      <div class="tx-label">Nilai transaksi hari ini</div>
+      <div class="tx-val" id="txValue"><?= fmtRp($tx['total_nilai']) ?></div>
+      <div class="tx-saldo" id="txSaldoRow" onclick="openSaldoQris()" style="display:none">
+        <span class="tx-saldo-lbl">Saldo QRIS</span>
+        <span class="tx-saldo-val" id="txSaldo"></span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 6 15 12 9 18" />
+        </svg>
+      </div>
+    </div>
+    <img class="tx-qris" src="assets/images/Soft%20Overlay.png" alt="Lihat QRIS" onclick="openQris()">
   </div>
 
   <div class="laporan-wrap fi">
@@ -54,7 +64,6 @@ require_once __DIR__ . '/includes/header.php';
         </svg>
       </button>
     </div>
-    <div class="divider"></div>
     <div class="klaim-row">
       <div class="klaim-box" onclick="openOv('ovKlaim')">
         <div class="klaim-label">Klaim user <span class="info-i" onclick="event.stopPropagation();openOv('ovKlaim')">!</span></div>
@@ -369,6 +378,19 @@ require_once __DIR__ . '/includes/header.php';
     setTimeout(() => closeOvById('ovLokasi'), 300);
   }
 
+  // TODO: nama handler Flutter masih asumsi, sesuaikan dengan aplikasi
+  function openSaldoQris() {
+    if (window.flutter_inappwebview) {
+      window.flutter_inappwebview.callHandler('openSaldoQris', { toko_id: selToko });
+    } else {
+      toast('Detail saldo QRIS hanya tersedia di aplikasi.', true);
+    }
+  }
+
+  function openQris() {
+    window.location.href = 'qris.php?toko_id=' + encodeURIComponent(selToko);
+  }
+
   function selPeriod(v) {
     curPeriod = v;
     updateRadios(v);
@@ -416,7 +438,11 @@ require_once __DIR__ . '/includes/header.php';
       </svg>${data.toko?.alamat || ''}`;
 
     document.getElementById('txValue').textContent = fmtRp(data.tx?.total_nilai || 0);
-    document.getElementById('txCount').textContent = `= ${parseInt(data.tx?.jumlah_transaksi || 0, 10)} transaksi`;
+    // Saldo QRIS (belum ter-settle): baris disembunyikan selama datanya belum tersedia
+    const saldoQris = data.tx?.saldo_qris;
+    const hasSaldo = saldoQris !== null && saldoQris !== undefined;
+    document.getElementById('txSaldoRow').style.display = hasSaldo ? '' : 'none';
+    if (hasSaldo) document.getElementById('txSaldo').textContent = fmtRp(saldoQris);
     document.getElementById('laporanDate').textContent = data.lap?.periode_str || '-';
     document.getElementById('klaimUser').textContent = parseInt(data.klaim?.user || 0, 10);
     document.getElementById('klaimMerchant').textContent = parseInt(data.klaim?.merchant || 0, 10);
