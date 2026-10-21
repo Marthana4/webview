@@ -736,6 +736,185 @@ $DUMMY = [
     ],
 ];
 
+// ─── REFERAL ───────────────────────────────────────
+// min = jumlah Merchant Bergabung minimal untuk level tersebut (per bulan)
+const REFERAL_LEVELS = [
+    'bronze' => ['nama' => 'Bronze', 'merchant' => '< 20 Merchant', 'bonus' => 3000, 'min' => 0],
+    'gold' => ['nama' => 'Gold', 'merchant' => '20–50 Merchant', 'bonus' => 4000, 'min' => 20],
+    'super' => ['nama' => 'Super', 'merchant' => '>50 Merchant', 'bonus' => 5000, 'min' => 51],
+];
+
+const REFERAL_SESSION_KEY = 'webview_referal_joined_dummy';
+
+function referalLevelFor(int $merchantCount): string
+{
+    $current = 'bronze';
+    foreach (REFERAL_LEVELS as $key => $lv) {
+        if ($merchantCount >= $lv['min']) {
+            $current = $key;
+        }
+    }
+    return $current;
+}
+
+/**
+ * TODO: status & perolehan referal belum punya sumber data. Mode dummy
+ * (tanpa lokasi) memakai session + angka contoh; merchant asli selalu
+ * dianggap belum bergabung sampai endpoint-nya tersedia.
+ */
+function getReferalStatus(array $merchantLocations): array
+{
+    webviewStartSession();
+    $joined = empty($merchantLocations) && !empty($_SESSION[REFERAL_SESSION_KEY]);
+    if (!$joined) {
+        return ['joined' => false];
+    }
+
+    // ?demo_merchant=N (mode dummy saja) untuk melihat tampilan tiap level
+    $merchant = isset($_GET['demo_merchant']) ? max(0, (int)$_GET['demo_merchant']) : 15;
+    $level = referalLevelFor($merchant);
+
+    return [
+        'joined' => true,
+        'link' => 'https://registrasi.qris.online/m/s/?ID1023276676146',
+        'total_klik' => 20,
+        'merchant_bergabung' => $merchant,
+        'level' => $level,
+        'bonus' => $merchant * REFERAL_LEVELS[$level]['bonus'],
+        'bonus_cair' => 5000,
+    ];
+}
+
+/**
+ * Merchant yang bergabung lewat link referal pada bulan $ym (YYYY-MM), nama &
+ * nomor HP sudah disamarkan. TODO: belum punya sumber data; contoh hanya di
+ * mode dummy dan hanya untuk bulan berjalan.
+ */
+function getReferalMerchants(array $merchantLocations, string $ym): array
+{
+    $rows = [];
+    if (empty($merchantLocations) && $ym === date('Y-m')) {
+        $rows = [
+            ['nama' => 'John Smith', 'hp' => '081234567872', 'tanggal' => date('Y-m-12')],
+            ['nama' => 'Andrew Lee', 'hp' => '082198765472', 'tanggal' => date('Y-m-08')],
+            ['nama' => 'Bob Hartono', 'hp' => '085611223372', 'tanggal' => date('Y-m-05')],
+            ['nama' => 'Garry Wijaya', 'hp' => '087755443372', 'tanggal' => date('Y-m-02')],
+        ];
+    }
+
+    return array_map(static fn(array $r) => [
+        'nama' => maskReferalName($r['nama']),
+        'hp' => maskReferalPhone($r['hp']),
+        'tanggal' => $r['tanggal'],
+    ], $rows);
+}
+
+function maskReferalName(string $nama): string
+{
+    $first = strtok(trim($nama), ' ');
+    return ($first === false ? '' : $first) . '****';
+}
+
+function maskReferalPhone(string $hp): string
+{
+    $digits = preg_replace('/\D/', '', $hp);
+    if (strlen($digits) <= 4) {
+        return str_repeat('*', strlen($digits));
+    }
+    return substr($digits, 0, 2) . str_repeat('*', strlen($digits) - 4) . substr($digits, -2);
+}
+
+/** Posisi (0–100%) di progress bar level: batas Gold di 50%, batas Super di 90%. */
+function referalProgressPct(int $merchantCount): float
+{
+    $gold = REFERAL_LEVELS['gold']['min'];
+    $super = REFERAL_LEVELS['super']['min'];
+    if ($merchantCount > $super) {
+        return 100;
+    }
+    if ($merchantCount >= $gold) {
+        return 50 + 40 * ($merchantCount - $gold) / ($super - $gold);
+    }
+    return 50 * $merchantCount / $gold;
+}
+
+// ─── SETTLEMENT ────────────────────────────────────
+const SETTLEMENT_STATUS = [
+    'proses' => ['label' => 'Proses Pencairan', 'class' => 'stl-st--proses'],
+    'berhasil' => ['label' => 'Berhasil', 'class' => 'stl-st--berhasil'],
+    'gagal' => ['label' => 'Gagal', 'class' => 'stl-st--gagal'],
+];
+
+function dummySettlements(): array
+{
+    // Tanggal relatif ke bulan berjalan supaya muncul di filter default
+    $tgl = date('Y-m-05');
+    $base = [
+        'tanggal' => $tgl,
+        'periode_dari' => date('Y-m-01'),
+        'periode_sampai' => date('Y-m-03'),
+        'bank' => 'BCA',
+        'pemilik_rekening' => 'John Doe',
+        'total_transaksi' => 33000,
+        'biaya_settlement' => 3000,
+        'mdr' => 231,
+        'biaya_skn' => 0,
+        'penyesuaian' => 0,
+    ];
+
+    return [
+        ['id' => '308389', 'status' => 'proses'] + $base,
+        ['id' => '308390', 'status' => 'berhasil'] + $base,
+    ];
+}
+
+/**
+ * TODO: riwayat settlement belum punya sumber data. Data contoh hanya dipakai
+ * saat tanpa lokasi (mode dummy); merchant asli mendapat daftar kosong.
+ */
+function getSettlements(array $merchantLocations, ?int $tokoId = null): array
+{
+    $rows = empty($merchantLocations) ? dummySettlements() : [];
+
+    foreach ($rows as &$row) {
+        $row['total'] = $row['total_transaksi'] - $row['biaya_settlement'] - $row['mdr']
+            - $row['biaya_skn'] - $row['penyesuaian'];
+    }
+    unset($row);
+
+    return $rows;
+}
+
+function findSettlement(array $merchantLocations, string $id, ?int $tokoId = null): ?array
+{
+    foreach (getSettlements($merchantLocations, $tokoId) as $row) {
+        if ((string)$row['id'] === $id) {
+            return $row;
+        }
+    }
+    return null;
+}
+
+function fmtTglId(string $date, bool $withDay = false, bool $longMonth = false): string
+{
+    $ts = strtotime($date);
+    $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    $short = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    $long = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    $m = (int)date('n', $ts) - 1;
+
+    $out = date('d', $ts) . ' ' . ($longMonth ? $long[$m] : $short[$m]) . ' ' . date('Y', $ts);
+    return $withDay ? $days[(int)date('w', $ts)] . ', ' . $out : $out;
+}
+
+function fmtRangeId(string $from, string $to): string
+{
+    if (date('Y-m', strtotime($from)) === date('Y-m', strtotime($to))) {
+        return date('d', strtotime($from)) . ' – ' . fmtTglId($to);
+    }
+    return fmtTglId($from) . ' – ' . fmtTglId($to);
+}
+
 function e(mixed $val): string
 {
     return htmlspecialchars((string)$val, ENT_QUOTES, 'UTF-8');

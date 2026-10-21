@@ -4,20 +4,14 @@ require_once __DIR__ . '/includes/dummy.php';
 $pageTitle = 'Referal – InterActive QRIS';
 $activeTab = 'referal';
 
-// TODO: isi dengan URL video & halaman syarat ketentuan yang sebenarnya
+// TODO: isi dengan URL video yang sebenarnya
 $referalVideoUrl = '';
-$referalTermsUrl = '';
+$referalTermsUrl = 'syarat_ketentuan.php';
 
 $caraMudah = [
   'Bagikan Link Referal Anda',
   'Ajak teman Anda daftar QRIS (hingga bayar) dengan link Tersebut',
   'Dapatkan Bonus Anda!',
-];
-
-$levels = [
-  ['key' => 'bronze', 'nama' => 'Bronze Level', 'merchant' => '< 20 Merchant', 'bonus' => 3000],
-  ['key' => 'gold', 'nama' => 'Gold Level', 'merchant' => '20–50 Merchant', 'bonus' => 4000],
-  ['key' => 'super', 'nama' => 'Super Level', 'merchant' => '>50 Merchant', 'bonus' => 5000],
 ];
 
 $bonusCair = [
@@ -27,7 +21,14 @@ $bonusCair = [
   'Dicairkan ke rekening sesuai yang terdaftar di QRIS Anda',
 ];
 
+$referal = getReferalStatus($dbLocations);
+
 require_once __DIR__ . '/includes/header.php';
+
+if ($referal['joined']) {
+  require __DIR__ . '/includes/referal_dashboard.php';
+  return;
+}
 ?>
 
 <div class="content content--referal">
@@ -66,29 +67,7 @@ require_once __DIR__ . '/includes/header.php';
       <li>Terdapat tingkatan bonus yang berlaku tiap satu bulan</li>
     </ol>
 
-    <div class="ref-levels">
-      <?php foreach ($levels as $lv): ?>
-        <div class="ref-level ref-level--<?= $lv['key'] ?>">
-          <div class="ref-level-rail">
-            <div class="ref-medal">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                <path d="M8 13l-2 9 6-3 6 3-2-9" fill="currentColor" opacity=".55" />
-                <circle cx="12" cy="9" r="7" fill="currentColor" />
-                <path d="M12 5.2l1.2 2.5 2.7.4-2 1.9.5 2.7-2.4-1.3-2.4 1.3.5-2.7-2-1.9 2.7-.4z" fill="white" />
-              </svg>
-            </div>
-            <div class="ref-level-line"></div>
-          </div>
-          <div class="ref-level-card">
-            <div class="ref-level-name"><?= e($lv['nama']) ?></div>
-            <div class="ref-level-lbl">Merchant Bergabung</div>
-            <div class="ref-level-val"><?= e($lv['merchant']) ?></div>
-            <div class="ref-level-lbl">Nilai Bonus</div>
-            <div class="ref-level-val"><span class="ref-level-bonus"><?= fmtRp($lv['bonus']) ?></span> / Merchant Bergabung</div>
-          </div>
-        </div>
-      <?php endforeach; ?>
-    </div>
+    <?php require __DIR__ . '/includes/referal_levels.php'; ?>
 
     <ol class="ref-ol" start="3">
       <li>Contoh perhitungan : Anton dalam bulan Juni berhasil mengajak 10 Orang</li>
@@ -129,6 +108,11 @@ require_once __DIR__ . '/includes/header.php';
 
 </div><!-- /content -->
 
+<!-- Animasi sukses setelah Gabung Referal -->
+<div class="ref-success" id="refSuccess" aria-hidden="true">
+  <img class="ref-success-anim" id="refSuccessAnim" alt="Berhasil bergabung">
+</div>
+
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
 
 <script src="assets/js/main.js"></script>
@@ -159,9 +143,38 @@ require_once __DIR__ . '/includes/header.php';
     return false;
   }
 
-  // TODO: sambungkan ke endpoint / handler pendaftaran referal
-  function joinReferal() {
+  async function joinReferal() {
     if (!document.getElementById('refAgree').checked) return;
-    toast('Pendaftaran referal belum tersedia.', true);
+    const btn = document.getElementById('btnJoinReferal');
+    btn.disabled = true;
+    try {
+      const res = await fetch('referal_join.php', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Gagal bergabung.');
+      showJoinSuccess();
+    } catch (err) {
+      toast(err.message || 'Gagal bergabung.', true);
+      btn.disabled = false;
+    }
+  }
+
+  // Durasi satu putaran referal-sukses.gif (GIF-nya berulang, jadi overlay
+  // ditutup tepat sebelum putaran kedua dimulai)
+  const JOIN_ANIM_MS = 1500;
+
+  function showJoinSuccess() {
+    const img = document.getElementById('refSuccessAnim');
+    // Query string baru memaksa GIF mulai lagi dari frame pertama
+    img.src = 'assets/images/referal-sukses.gif?t=' + Date.now();
+    document.getElementById('refSuccess').classList.add('on');
+    setTimeout(onJoinSuccessDone, JOIN_ANIM_MS);
+  }
+
+  // Muat ulang supaya server menampilkan dashboard referal aktif
+  function onJoinSuccessDone() {
+    window.location.reload();
   }
 </script>
